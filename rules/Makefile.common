@@ -1,0 +1,21 @@
+# ==== build options ====
+
+ARCHS:=-arch x86_64 -arch i386
+
+CXXFLAGS:=-std=c++11 -stdlib=libc++ -Wno-invalid-offsetof
+OBJCXXFLAGS:=-std=c++11 -stdlib=libc++ -Wno-invalid-offsetof
+DFLAGS:=-stdlib=libc++
+ALL_FLAGS:=-Wall
+
+#USE_DEBUG=1
+
+SMDIR:=/Users/arai/projects/spidermonkey24
+INCLUDE_DIRS:=\
+	-I$(SMDIR)/include/mozjs-24
+LIB_DIRS:=\
+	 -L$(SMDIR)/lib
+
+LIBS:=\
+	-lmozjs-24 \
+	-lz \
+	-framework Foundation

@@ -1,0 +1,95 @@
+# ==== objects ====
+
+MakeObject=$(basename $(1)).o
+OBJECTS:=$(addprefix $(BUILDDIR)/,$(foreach src,$(SRC),$(call MakeObject,$(src))))
+OBJDIRS:=$(sort $(dir $(OBJECTS)))
+
+ifneq ($(TARGET),)
+TARGET_BINARY:=$(TARGET)
+endif
+ifneq ($(TARGET_LIB),)
+TARGET_BINARY:=$(TARGET_LIB)
+endif
+
+# ==== build options ====
+
+ifeq ($(USE_DEBUG),1)
+ALL_FLAGS:=$(ALL_FLAGS) -g
+endif
+
+CFLAGS:=$(ARCHS) $(INCLUDE_DIRS) $(CFLAGS) $(ALL_FLAGS)
+CXXFLAGS:=$(ARCHS) $(INCLUDE_DIRS) $(CXXFLAGS) $(ALL_FLAGS)
+OBJCFLAGS:=$(ARCHS) $(INCLUDE_DIRS) $(OBJCFLAGS) $(ALL_FLAGS)
+OBJCXXFLAGS:=$(ARCHS) $(INCLUDE_DIRS) $(OBJCXXFLAGS) $(ALL_FLAGS)
+LDFLAGS:=$(ARCHS) $(LIB_DIRS) $(LDFLAGS) $(ALL_FLAGS)
+
+# ==== build rules ====
+
+all: $(OBJDIRS) $(BUILDDIR)/$(TARGET_BINARY)
+
+ifneq ($(TARGET),)
+$(BUILDDIR)/$(TARGET): $(OBJECTS)
+ifeq ($(SILENT),@)
+	@$(ECHO) Linking $@
+endif
+	$(SILENT)$(CXX) -o $@ $(LDFLAGS) $(OBJECTS) $(LIBS)
+ifneq ($(USE_DEBUG),1)
+	$(SILENT)$(STRIP) -x -S $(BUILDDIR)/$(TARGET)
+endif
+endif
+
+ifneq ($(TARGET_LIB),)
+$(BUILDDIR)/$(TARGET_LIB): $(OBJECTS)
+ifeq ($(SILENT),@)
+	@$(ECHO) Linking $@
+endif
+	$(SILENT)$(RM) -f $@
+	$(SILENT)$(AR) r $@ $(OBJECTS)
+	$(SILENT)$(RANLIB) $@
+endif
+
+clean:
+	$(RM) -rf $(BUILDDIR)
+
+# ==== build rules - directories ====
+
+define DefineDirRule
+$(1):
+	@$$(MKDIR) -p $$@
+endef
+$(foreach dir,$(OBJDIRS),$(eval $(call DefineDirRule,$(dir))))
+
+# ==== build rules - compile ====
+
+define DefineCompileRule
+$$(BUILDDIR)/$(call MakeObject,$(1)): $$(SRCDIR)/$(1)
+ifeq ($(suffix $(1)),.c)
+ifeq ($(SILENT),@)
+	@$$(ECHO) Compiling $$<
+endif
+	$(SILENT)$$(CC) -c $$(CFLAGS) -o $$@ -MT $$@ -MMD -MP -MF $$@.Tpo $$<
+endif
+ifeq ($(suffix $(1)),.cc)
+ifeq ($(SILENT),@)
+	@$$(ECHO) Compiling $$<
+endif
+	$(SILENT)$$(CXX) -c $$(CXXFLAGS) -o $$@ -MT $$@ -MMD -MP -MF $$@.Tpo $$<
+endif
+ifeq ($(suffix $(1)),.m)
+ifeq ($(SILENT),@)
+	@$$(ECHO) Compiling $$<
+endif
+	$(SILENT)$$(OBJC) -c $$(OBJCFLAGS) -o $$@ -MT $$@ -MMD -MP -MF $$@.Tpo $$<
+endif
+ifeq ($(suffix $(1)),.mm)
+ifeq ($(SILENT),@)
+	@$$(ECHO) Compiling $$<
+endif
+	$(SILENT)$$(OBJCXX) -c $$(OBJXXCFLAGS) -o $$@ -MT $$@ -MMD -MP -MF $$@.Tpo $$<
+endif
+endef
+$(foreach src,$(SRC),$(eval $(call DefineCompileRule,$(src))))
+
+# ==== dependencies ====
+
+-include $(addsuffix .Tpo,$(OBJECTS))

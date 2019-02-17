@@ -1,0 +1,64 @@
+UnMHT for QuickLook build instruction
+
+[Prepare SpiderMonkey24 with Universal Binary]
+
+1. Extract SpiderMonkey source.
+  $ tar jxvf mozjs-24.2.0.rc2.tar.bz2
+  $ export PATH_TO_SPIDER_MONKEY=$(pwd)/mozjs-24.2.0
+
+2. Build SpiderMonkey for i386.
+  $ cd ${PATH_TO_SPIDER_MONKEY}/js/src/
+  $ mkdir obj_i386
+  $ cd obj_i386
+  $ AR="ar" CFLAGS="-arch i386" CXXFLAGS="-arch i386" LDFLAGS="-arch i386" ../configure --target=i386-apple-darwin10.0.0 --disable-shared-js --prefix=${PATH_TO_SPIDER_MONKEY}/dist/i386 && make && make install
+
+3. Build SpiderMonkey for x86_64.
+  $ cd ${PATH_TO_SPIDER_MONKEY}/js/src/
+  $ mkdir obj_x86_64
+  $ cd obj_x86_64
+  $ AR="ar" CFLAGS="-arch x86_64" CXXFLAGS="-arch x86_64" LDFLAGS="-arch x86_64" ../configure --target=x86_64-apple-darwin10.0.0 --disable-shared-js --prefix=${PATH_TO_SPIDER_MONKEY}/dist/x86_64 && make && make install
+
+4. Copy headers from x86_64.
+  $ cd ${PATH_TO_SPIDER_MONKEY}
+  $ mkdir ./include
+  $ cp -R ./dist/x86_64/include/* ./include/
+
+5. Make header file compatible with both i386 and x86_64.
+
+Modify <PATH_TO_SPIDER_MONKEY>/include/mozjs-24/js-config.h, line 45.
+from:
+  #define JS_BYTES_PER_WORD 8
+to:
+  #if defined(__i386)
+  # define JS_BYTES_PER_WORD 4
+  #endif
+  #if defined(__x86_64)
+  # define JS_BYTES_PER_WORD 8
+  #endif
+
+6. Merge libraries.
+  $ cd ${PATH_TO_SPIDER_MONKEY}
+  $ mkdir  ./lib
+  $ lipo -create ./dist/i386/lib/libmozjs-24.a ./dist/x86_64/lib/libmozjs-24.a -output ./lib/libmozjs-24.a
+
+[Build UnMHT for QuickLook]
+
+1. Replace SMDIR variable in rules/Makefile.common.
+
+from:
+  SMDIR=/Users/arai/projects/spidermonkey24
+to:
+  SMDIR=<PATH_TO_SPIDER_MONKEY>
+
+2. Replace ARCHS variable in rules/Makefile.common.
+
+from:
+  ARCHS=-arch x86_64 -arch i386 -isysroot /Developer/SDKs/MacOSX10.7.sdk
+to:
+  ARCHS=-arch x86_64 -arch i386 -isysroot <PATH_TO_SDK>
+
+3. Build.
+  $ make
+
+4. Install into your Library Folder.
+  $ make install
